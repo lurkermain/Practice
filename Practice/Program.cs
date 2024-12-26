@@ -16,39 +16,15 @@ builder.Services.AddControllers();
 
 builder.Services.AddEndpointsApiExplorer();
 
-
-
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Practice", Version = "v0" });
-
-    // Добавьте XML-комментарии для Swagger, если они используются
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath))
-    {
-        options.IncludeXmlComments(xmlPath);
-    }
-});
-
-builder.Services.AddScoped<ProductsController>();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
-
-
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-
 }
-
-
-/*app.UseCors(builder =>
-    builder.AllowAnyOrigin()
-           .AllowAnyMethod()
-           .AllowAnyHeader());*/
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -57,10 +33,6 @@ app.UseRouting();
 
 app.UseAuthorization();
 
-/*app.MapControllers();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=ProductsController}/{action=Index}/{id?}");*/
+app.MapControllers();
 
 app.Run();
