@@ -17,7 +17,7 @@ namespace Practice.Controllers
             _context = context;
         }
 
-        [HttpGet("Get All")]
+        [HttpGet("get-all/image")]
         public async Task<IActionResult> GetAll()
         {
             var products = await _context.Products
@@ -34,7 +34,7 @@ namespace Practice.Controllers
             return Ok(products);
         }
 
-        [HttpGet("{id} Get Info")]
+        [HttpGet("{id}/image-info")]
         public async Task<IActionResult> GetById(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -56,7 +56,7 @@ namespace Practice.Controllers
             return Ok(productDto); // Возвращаем JSON-объект
         }
 
-        [HttpGet("{id} Get Image")]
+        [HttpGet("{id}/image")]
         public async Task<IActionResult> GetImage(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -69,7 +69,7 @@ namespace Practice.Controllers
         }
 
 
-        [HttpPost("Create")]
+        [HttpPost("{id}/image")]
         public async Task<IActionResult> Create([FromForm] ProductCreate productDto)
         {
             if (productDto.Image == null || productDto.Image.Length == 0)
@@ -93,10 +93,10 @@ namespace Practice.Controllers
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+            return Ok();
         }
 
-        [HttpPut("Edit")]
+        [HttpPut("{id}/image")]
         public async Task<IActionResult> Update([FromForm] ProductCreate productDto)
         {
             if (productDto.Id != productDto.Id) return BadRequest("Product ID mismatch");
@@ -130,7 +130,7 @@ namespace Practice.Controllers
         }
 
 
-        [HttpDelete("Delete")]
+        [HttpDelete("{id}/image")]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _context.Products.FindAsync(id);
