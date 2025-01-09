@@ -7,17 +7,12 @@ using Practice.Models;
 namespace Practice.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
-    public class ProductsController : ControllerBase
+    [Route("api/[controller]")]
+    public class ProductsController(ApplicationDbContext context) : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context = context;
 
-        public ProductsController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpGet("get-all/image")]
+        [HttpGet("products")]
         public async Task<IActionResult> GetAll()
         {
             var products = await _context.Products
@@ -34,7 +29,7 @@ namespace Practice.Controllers
             return Ok(products);
         }
 
-        [HttpGet("{id}/image-info")]
+        [HttpGet("products/{id}")]
         public async Task<IActionResult> GetById(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -56,7 +51,7 @@ namespace Practice.Controllers
             return Ok(productDto); // Возвращаем JSON-объект
         }
 
-        [HttpGet("{id}/image")]
+        [HttpGet("products/{id}/image")]
         public async Task<IActionResult> GetImage(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -65,27 +60,27 @@ namespace Practice.Controllers
                 return NotFound();
             }
 
-            return File(product.Image, "image/postgresql");
+            return File(product.Image, "image/jpg");
         }
 
 
-        [HttpPost("{id}/image")]
-        public async Task<IActionResult> Create([FromForm] ProductCreate productDto)
+        [HttpPost("products")]
+        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] string modeltype, IFormFile image)
         {
-            if (productDto.Image == null || productDto.Image.Length == 0)
+            if (image == null || image.Length == 0)
             {
                 return BadRequest("Image file is required.");
             }
 
             // Читаем изображение в байтовый массив
-            var imageBytes = await FileHelper.ConvertToByteArrayAsync(productDto.Image);
+            var imageBytes = await FileHelper.ConvertToByteArrayAsync(image);
 
             // Создаем объект Product
             var product = new Product
             {
-                Name = productDto.Name,
-                Description = productDto.Description,
-                ModelType = productDto.ModelType,
+                Name = name,
+                Description = description,
+                ModelType = modeltype,
                 Image = imageBytes
             };
 
@@ -96,7 +91,7 @@ namespace Practice.Controllers
             return Ok();
         }
 
-        [HttpPut("{id}/image")]
+        [HttpPut("products")]
         public async Task<IActionResult> Update([FromForm] ProductCreate productDto)
         {
             if (productDto.Id != productDto.Id) return BadRequest("Product ID mismatch");
@@ -130,7 +125,7 @@ namespace Practice.Controllers
         }
 
 
-        [HttpDelete("{id}/image")]
+        [HttpDelete("products/{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _context.Products.FindAsync(id);
