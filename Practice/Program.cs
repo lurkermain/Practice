@@ -7,19 +7,19 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Подключение к базе данных
+// Connect to db
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Добавление сервисов
+// Add services
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v0", new OpenApiInfo
+    c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Products API",
-        Version = "v0",
-        Description = "API для управления продуктами"
+        Version = "v1",
+        Description = "API for product management"
     });
 });
 
