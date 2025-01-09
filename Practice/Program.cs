@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add services to the container // Добавление сервисов
+// Добавление сервисов
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen(c =>
 {
