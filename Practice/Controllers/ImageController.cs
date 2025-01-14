@@ -2,10 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using Practice.Models;
 using System;
+using System.Diagnostics;
 
 namespace Practice.Controllers
 {
-    /*[ApiController]
+    [ApiController]
     [Route("[Controller]")]
     public class ImageController : ControllerBase
     {
@@ -15,34 +16,62 @@ namespace Practice.Controllers
         {
             _context = context;
         }
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            var products = await _context.Products
-                .Select(p => new ProductUrl
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    ModelType = p.ModelType,
-                    ImageUrl = Url.Action("GetImage", new { id = p.Id }) // Генерация ссылки на метод GetImage
-                })
-                .ToListAsync();
 
-            return Ok(products);
+        [HttpGet("products/{id}/rendered-image")]
+        public IActionResult GetRenderedImage(int id)
+        {
+            //  изображения сохраняются в папке "C:\render"
+            string imagePath = Path.Combine(@"C:\blender_render", $"left_{id}.png");
+
+            if (!System.IO.File.Exists(imagePath))
+            {
+                return NotFound($"Rendered image for product {id} not found.");
+            }
+
+            byte[] imageBytes = System.IO.File.ReadAllBytes(imagePath);
+            return File(imageBytes, "image/png");
         }
-        [HttpGet("{id}/image")]
-        public async Task<IActionResult> GetImage(int id)
+
+        [HttpPost("products/{id}/render")]
+        public async Task<IActionResult> RenderProductImage(int id, [FromQuery] float angle, [FromQuery] float light)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null || product.Image == null)
+            if (product == null)
             {
                 return NotFound();
             }
 
-            return File(product.Image, "image/postgresql);
+            string blenderExe = "\"C:\\Program Files\\Blender Foundation\\Blender 4.3\\blender.exe\"";
+            string scriptPath = "\"C:\\Program Files\\Blender Foundation\\Blender 4.3\\script2.py\"";
+            string modelPath = "\"C:\\blender_fruto\\front_fruto_nyanya_half v2.gltf\"";  // Укажите путь к модели
+            string texturePath = "\"C:\\blender_fruto\\samples\\front 1 chicken.png\"";  // Укажите путь к текстуре
+
+            string arguments = $"--background --python {scriptPath} -- --id {id} --filepath \"C:\\blender_render\\left_{id}.png\" --modelpath {modelPath} --texturepath {texturePath} --angle 45 --light 300";
+
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = blenderExe,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+
+            using var process = new Process { StartInfo = processStartInfo };
+            process.Start();
+
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+
+            if (process.ExitCode != 0)
+            {
+                return StatusCode(500, $"Error rendering image: {error}");
+            }
+
+            return Ok($"Image for product {id} rendered successfully.");
         }
-
-
-    }*/
+    }
 }
