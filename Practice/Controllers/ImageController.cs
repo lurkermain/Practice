@@ -41,13 +41,14 @@ namespace Practice.Controllers
                 return NotFound();
             }
 
-            string blenderExe = "\"X:\\Blender Foundation\\Blender 4.3\\blender.exe\"";
-            string scriptPath = "\"X:\\Blender Foundation\\Blender 4.3\\script2.py\"";
+            string blenderExe = "\"X:\\BlenderFoundation\\Blender4.3\\blender.exe\"";
+            string scriptPath = "\"X:\\BlenderFoundation\\Blender4.3\\script2.py\"";
             string filepath = $@"C:\blender_render\rendered_image_{id}.png";
             string modelpath = @"C:\blender_fruto\front_fruto_nyanya_half.gltf";
             string texturepath = @"C:\blender_fruto\front 1 bunny.png";
 
             string arguments = $"--background --python \"{scriptPath}\" -- --filepath \"{filepath}\" --modelpath \"{modelpath}\" --texturepath \"{texturepath}\" --angle {angle} --light {light}";
+
 
             var processStartInfo = new ProcessStartInfo
             {
