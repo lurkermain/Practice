@@ -4,7 +4,6 @@ import argparse
 
 # Разбор аргументов командной строки
 parser = argparse.ArgumentParser(description="Render an image in Blender")
-parser.add_argument("--id", type=int, required=True, help="Product ID")
 parser.add_argument("--filepath", type=str, required=True, help="Output file path")
 parser.add_argument("--modelpath", type=str, required=True, help="Path to the 3D model")
 parser.add_argument("--texturepath", type=str, required=True, help="Path to the texture image")
@@ -13,7 +12,7 @@ parser.add_argument("--light", type=float, required=False, help="Light intensity
 args = parser.parse_args()
 
 # Проверьте полученные аргументы
-print(f"Arguments received: id={args.id}, filepath={args.filepath}, modelpath={args.modelpath}, texturepath={args.texturepath}, angle={args.angle}, light={args.light}")
+print(f"Arguments received: filepath={args.filepath}, modelpath={args.modelpath}, texturepath={args.texturepath}, angle={args.angle}, light={args.light}")
 
 # Очистка сцены
 bpy.ops.object.select_all(action='SELECT')

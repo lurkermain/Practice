@@ -41,12 +41,13 @@ namespace Practice.Controllers
                 return NotFound();
             }
 
-            string blenderExe = "\"C:\\Program Files\\Blender Foundation\\Blender 4.3\\blender.exe\"";
-            string scriptPath = "\"C:\\Program Files\\Blender Foundation\\Blender 4.3\\script2.py\"";
-            string modelPath = "\"C:\\blender_fruto\\front_fruto_nyanya_half v2.gltf\"";  // Укажите путь к модели
-            string texturePath = "\"C:\\blender_fruto\\samples\\front 1 chicken.png\"";  // Укажите путь к текстуре
+            string blenderExe = "\"X:\\Blender Foundation\\Blender 4.3\\blender.exe\"";
+            string scriptPath = "\"X:\\Blender Foundation\\Blender 4.3\\script2.py\"";
+            string filepath = $@"C:\blender_render\rendered_image_{id}.png";
+            string modelpath = @"C:\blender_fruto\front_fruto_nyanya_half.gltf";
+            string texturepath = @"C:\blender_fruto\front 1 bunny.png";
 
-            string arguments = $"--background --python {scriptPath} -- --id {id} --filepath \"C:\\blender_render\\left_{id}.png\" --modelpath {modelPath} --texturepath {texturePath} --angle 45 --light 300";
+            string arguments = $"--background --python \"{scriptPath}\" -- --filepath \"{filepath}\" --modelpath \"{modelpath}\" --texturepath \"{texturepath}\" --angle {angle} --light {light}";
 
             var processStartInfo = new ProcessStartInfo
             {
@@ -55,8 +56,15 @@ namespace Practice.Controllers
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
+
+            processStartInfo.Verb = "runas";
+
+
+            // log
+            Console.WriteLine($"Blender Path: {blenderExe}");
+            Console.WriteLine($"Arguments: {arguments}");
 
 
             using var process = new Process { StartInfo = processStartInfo };
