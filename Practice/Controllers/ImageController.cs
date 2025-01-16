@@ -17,7 +17,7 @@ namespace Practice.Controllers
             _context = context;
         }
 
-        [HttpGet("products/{id}/rendered-image")]
+        /*[HttpGet("products/{id}/rendered-image")]
         public IActionResult GetRenderedImage(int id)
         {
             //  изображения сохраняются в папке "C:\render"
@@ -30,9 +30,9 @@ namespace Practice.Controllers
 
             byte[] imageBytes = System.IO.File.ReadAllBytes(imagePath);
             return File(imageBytes, "image/png");
-        }
+        }*/
 
-        [HttpPost("products/{id}/render")]
+        /*[HttpPost("products/{id}/render")]
         public async Task<IActionResult> RenderProductImage(int id, [FromQuery] float angle, [FromQuery] float light)
         {
             var product = await _context.Products.FindAsync(id);
@@ -81,6 +81,76 @@ namespace Practice.Controllers
             }
 
             return Ok($"Image for product {id} rendered successfully.");
+        }*/
+
+        [HttpPost("products/render")]
+        public IActionResult Render(int angle, int lightEnergy, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { error = "Файл не был загружен." });
+            }
+
+            string uploadPath = Path.Combine("C:/blender_render/", file.FileName);
+            string outputPath = "C:\\blender_render\\photo.png"; // Путь к выходному файлу
+            try
+            {
+                // Сохраняем файл на сервере
+                using (var stream = new FileStream(uploadPath, FileMode.Create))
+                {
+                    file.CopyTo(stream);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка при сохранении файла: {ex.Message}" });
+            }
+
+            string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
+            string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
+
+            ProcessStartInfo start = new ProcessStartInfo
+            {
+                FileName = blenderPath,
+                Arguments = $"-b -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{uploadPath}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            string result = string.Empty;
+            string error = string.Empty;
+
+            try
+            {
+                using (Process process = Process.Start(start))
+                {
+                    using (StreamReader reader = process.StandardOutput)
+                    {
+                        result = reader.ReadToEnd();
+                    }
+
+                    using (StreamReader reader = process.StandardError)
+                    {
+                        error = reader.ReadToEnd();
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(error))
+                {
+                    return StatusCode(500, new { error });
+                }
+
+                var fileBytes = System.IO.File.ReadAllBytes(outputPath);
+                return File(fileBytes, "image/png");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка при выполнении рендеринга: {ex.Message}" });
+            }
         }
+
+
     }
 }
