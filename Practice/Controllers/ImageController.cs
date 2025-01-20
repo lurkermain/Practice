@@ -3,22 +3,18 @@ using Microsoft.EntityFrameworkCore;
 using Practice.Models;
 using System;
 using System.Diagnostics;
+using System.Text;
 
 namespace Practice.Controllers
 {
     [ApiController]
-    [Route("[Controller]")]
-    public class ImageController : ControllerBase
+    [Route("api/image")]
+    public class ImageController(ApplicationDbContext context) : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context = context;
 
-        public ImageController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpPost("products/render")]
-        public IActionResult Render(int angle, int lightEnergy, IFormFile file)
+        [HttpPost("render")]
+        public async Task<IActionResult> Render(int angle, int lightEnergy, IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
@@ -30,10 +26,8 @@ namespace Practice.Controllers
             try
             {
                 // Сохраняем файл на сервере
-                using (var stream = new FileStream(uploadPath, FileMode.Create))
-                {
-                    file.CopyTo(stream);
-                }
+                await using FileStream stream = new(uploadPath, FileMode.Create);
+                await file.CopyToAsync(stream);
             }
             catch (Exception ex)
             {
@@ -43,7 +37,7 @@ namespace Practice.Controllers
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
 
-            ProcessStartInfo start = new ProcessStartInfo
+            var start = new ProcessStartInfo
             {
                 FileName = blenderPath,
                 Arguments = $"-b -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{uploadPath}\"",
@@ -53,36 +47,26 @@ namespace Practice.Controllers
                 CreateNoWindow = true
             };
 
-            string result = string.Empty;
-            string error = string.Empty;
+            var process = new Process { StartInfo = start };
+            var outputBuilder = new StringBuilder();
+            var errorBuilder = new StringBuilder();
 
-            try
+            process.OutputDataReceived += (sender, e) => outputBuilder.AppendLine(e.Data);
+            process.ErrorDataReceived += (sender, e) => errorBuilder.AppendLine(e.Data);
+
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
             {
-                using (Process process = Process.Start(start))
-                {
-                    using (StreamReader reader = process.StandardOutput)
-                    {
-                        result = reader.ReadToEnd();
-                    }
-
-                    using (StreamReader reader = process.StandardError)
-                    {
-                        error = reader.ReadToEnd();
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(error))
-                {
-                    return StatusCode(500, new { error });
-                }
-
-                var fileBytes = System.IO.File.ReadAllBytes(outputPath);
-                return File(fileBytes, "image/png");
+                return StatusCode(500, new { error = errorBuilder.ToString() });
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = $"Ошибка при выполнении рендеринга: {ex.Message}" });
-            }
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
+            return File(fileBytes, "image/png");
         }
 
         /*[HttpGet("products/{id}/rendered-image")]
@@ -150,9 +134,6 @@ namespace Practice.Controllers
 
             return Ok($"Image for product {id} rendered successfully.");
         }*/
-
-
-
 
     }
 }
