@@ -22,6 +22,9 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "API for product management"
     });
+/*    c.UseInlineDefinitionsForEnums();
+    c.SchemaGeneratorOptions.UseInlineDefinitionsForEnums = true;
+    c.SchemaGeneratorOptions.UseAllOfForInheritance = true;*/
 });
 
 builder.Services.AddCors(options =>

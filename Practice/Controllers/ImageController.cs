@@ -8,132 +8,131 @@ using System.Text;
 namespace Practice.Controllers
 {
     [ApiController]
-    [Route("api/image")]
+    [Route("api/products")]
     public class ImageController(ApplicationDbContext context) : ControllerBase
     {
         private readonly ApplicationDbContext _context = context;
 
-        [HttpPost("render")]
-        public async Task<IActionResult> Render(int angle, int lightEnergy, IFormFile file)
+        [HttpPost("{id}/render")]
+        public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy, IFormFile skinFile)
         {
-            if (file == null || file.Length == 0)
+            var renderItem = await _context.Render.FindAsync(id);
+            if (renderItem == null)
             {
-                return BadRequest(new { error = "Файл не был загружен." });
+                return NotFound(new { error = "Модель не найдена в базе данных." });
             }
 
-            string uploadPath = Path.Combine("C:/blender_render/", file.FileName);
-            string outputPath = "C:\\blender_render\\photo.png"; // Путь к выходному файлу
-            try
+            if (skinFile == null || skinFile.Length == 0)
             {
-                // Сохраняем файл на сервере
-                await using FileStream stream = new(uploadPath, FileMode.Create);
-                await file.CopyToAsync(stream);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = $"Ошибка при сохранении файла: {ex.Message}" });
+                return BadRequest(new { error = "Текстура не была загружена." });
             }
 
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
+            string outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
 
-            var start = new ProcessStartInfo
+            try
             {
-                FileName = blenderPath,
-                Arguments = $"-b -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{uploadPath}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
+                // Сохранение модели и текстуры во временные файлы
+                string tempModelPath = Path.Combine(Path.GetTempPath(), "model.gltf");
+                await System.IO.File.WriteAllBytesAsync(tempModelPath, renderItem.Model);
 
-            var process = new Process { StartInfo = start };
-            var outputBuilder = new StringBuilder();
-            var errorBuilder = new StringBuilder();
+                string tempSkinPath = Path.Combine(Path.GetTempPath(), "skin.png");
+                using (var stream = new FileStream(tempSkinPath, FileMode.Create))
+                {
+                    await skinFile.CopyToAsync(stream);
+                }
 
-            process.OutputDataReceived += (sender, e) => outputBuilder.AppendLine(e.Data);
-            process.ErrorDataReceived += (sender, e) => errorBuilder.AppendLine(e.Data);
+                // Запуск Blender
+                var start = new ProcessStartInfo
+                {
+                    FileName = blenderPath,
+                    Arguments = $"-b -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{tempModelPath}\" \"{tempSkinPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
 
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+                var process = new Process { StartInfo = start };
+                process.Start();
+                await process.WaitForExitAsync();
 
-            await process.WaitForExitAsync();
+                if (process.ExitCode != 0)
+                {
+                    return StatusCode(500, new { error = "Blender завершился с ошибкой." });
+                }
 
-            if (process.ExitCode != 0)
-            {
-                return StatusCode(500, new { error = errorBuilder.ToString() });
+                var renderedBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
+
+                // Очистка временных файлов
+                System.IO.File.Delete(tempModelPath);
+                System.IO.File.Delete(tempSkinPath);
+                System.IO.File.Delete(outputPath);
+
+                return File(renderedBytes, "image/png");
             }
-
-            var fileBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
-            return File(fileBytes, "image/png");
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка: {ex.Message}" });
+            }
         }
 
-        /*[HttpGet("products/{id}/rendered-image")]
-        public IActionResult GetRenderedImage(int id)
+        [HttpPost("{id}/model")]
+        public async Task<IActionResult> AddModel(IFormFile modelFile)
         {
-            //  изображения сохраняются в папке "C:\render"
-            string imagePath = Path.Combine(@"C:\blender_render", $"left_{id}.png");
-
-            if (!System.IO.File.Exists(imagePath))
+            if (modelFile == null || modelFile.Length == 0)
             {
-                return NotFound($"Rendered image for product {id} not found.");
+                return BadRequest(new { error = "Файл модели не был загружен." });
             }
 
-            byte[] imageBytes = System.IO.File.ReadAllBytes(imagePath);
-            return File(imageBytes, "image/png");
-        }*/
+            try
+            {
+                using var memoryStream = new MemoryStream();
+                await modelFile.CopyToAsync(memoryStream);
+                byte[] modelBytes = memoryStream.ToArray();
 
-        /*[HttpPost("products/{id}/render")]
-        public async Task<IActionResult> RenderProductImage(int id, [FromQuery] float angle, [FromQuery] float light)
+                var newRender = new Render
+                {
+                    Model = modelBytes,
+                    Angle = 0,  // Можно задать дефолтные значения
+                    Light = 0,
+                    Skin = null
+                };
+
+                _context.Render.Add(newRender);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { id = newRender.Id, message = "Модель успешно добавлена." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка при добавлении модели: {ex.Message}" });
+            }
+        }
+
+        // Метод для удаления модели из базы данных
+        [HttpDelete("{id}/model")]
+        public async Task<IActionResult> DeleteModel(int id)
         {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
+            var renderItem = await _context.Render.FindAsync(id);
+            if (renderItem == null)
             {
-                return NotFound();
+                return NotFound(new { error = "Модель с указанным идентификатором не найдена." });
             }
 
-            string blenderExe = "\"X:\\BlenderFoundation\\Blender4.3\\blender.exe\"";
-            string scriptPath = "\"X:\\BlenderFoundation\\Blender4.3\\script2.py\"";
-            string filepath = $@"C:\blender_render\rendered_image_{id}.png";
-            string modelpath = @"C:\blender_fruto\front_fruto_nyanya_half.gltf";
-            string texturepath = @"C:\blender_fruto\front 1 bunny.png";
-
-            string arguments = $"--background --python \"{scriptPath}\" -- --filepath \"{filepath}\" --modelpath \"{modelpath}\" --texturepath \"{texturepath}\" --angle {angle} --light {light}";
-
-
-            var processStartInfo = new ProcessStartInfo
+            try
             {
-                FileName = blenderExe,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
+                _context.Render.Remove(renderItem);
+                await _context.SaveChangesAsync();
 
-            processStartInfo.Verb = "runas";
-
-
-            // log
-            Console.WriteLine($"Blender Path: {blenderExe}");
-            Console.WriteLine($"Arguments: {arguments}");
-
-
-            using var process = new Process { StartInfo = processStartInfo };
-            process.Start();
-
-            string output = await process.StandardOutput.ReadToEndAsync();
-            string error = await process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
-
-            if (process.ExitCode != 0)
-            {
-                return StatusCode(500, $"Error rendering image: {error}");
+                return Ok(new { message = "Модель успешно удалена." });
             }
-
-            return Ok($"Image for product {id} rendered successfully.");
-        }*/
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка при удалении модели: {ex.Message}" });
+            }
+        }
 
     }
 }

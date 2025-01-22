@@ -65,7 +65,7 @@ namespace Practice.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] string modeltype, IFormFile image)
+        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
             if (image == null || image.Length == 0)
             {
@@ -80,7 +80,7 @@ namespace Practice.Controllers
             {
                 Name = name,
                 Description = description,
-                ModelType = modeltype,
+                ModelType = modeltype.ToString(), // Преобразуем в строку для хранения
                 Image = imageBytes
             };
 
