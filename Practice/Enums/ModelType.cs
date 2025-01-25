@@ -1,12 +1,11 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Practice
+namespace Practice.Enums
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ModelType
     {
         Банка,
         Пакет
-
     }
 }

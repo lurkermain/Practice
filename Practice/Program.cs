@@ -1,10 +1,10 @@
-using Practice;
 using Practice.Models;
 using Practice.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Swagger;
 using Microsoft.OpenApi.Models;
 using Practice.Helpers;
+using Practice.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 

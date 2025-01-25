@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using IronPython.Runtime.Operations;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Practice.Configuration;
 using Practice.Models;
 using System;
 using System.Diagnostics;
@@ -16,7 +18,7 @@ namespace Practice.Controllers
         [HttpPost("{id}/render")]
         public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy, IFormFile skinFile)
         {
-            var renderItem = await _context.Render.FindAsync(id);
+            var renderItem = await _context.Blender.FindAsync(id);
             if (renderItem == null)
             {
                 return NotFound(new { error = "Модель не найдена в базе данных." });
@@ -29,13 +31,13 @@ namespace Practice.Controllers
 
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
-            string outputPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
+            string outputPath = "C:/blender_render/";
 
             try
             {
                 // Сохранение модели и текстуры во временные файлы
                 string tempModelPath = Path.Combine(Path.GetTempPath(), "model.gltf");
-                await System.IO.File.WriteAllBytesAsync(tempModelPath, renderItem.Model);
+                await System.IO.File.WriteAllBytesAsync(tempModelPath, renderItem.Blender_Model);
 
                 string tempSkinPath = Path.Combine(Path.GetTempPath(), "skin.png");
                 using (var stream = new FileStream(tempSkinPath, FileMode.Create))
@@ -77,6 +79,13 @@ namespace Practice.Controllers
                 return StatusCode(500, new { error = $"Ошибка: {ex.Message}" });
             }
         }
+        [HttpGet("models")]
+        public async Task<IActionResult> GetModels()
+        {
+            var models = await _context.Blender.Select(p => new Blender {Id = p.Id, Blender_Model = p.Blender_Model}).ToListAsync();
+
+            return Ok(models);
+        }
 
         [HttpPost("{id}/model")]
         public async Task<IActionResult> AddModel(IFormFile modelFile)
@@ -92,18 +101,15 @@ namespace Practice.Controllers
                 await modelFile.CopyToAsync(memoryStream);
                 byte[] modelBytes = memoryStream.ToArray();
 
-                var newRender = new Render
+                var newModel = new Blender
                 {
-                    Model = modelBytes,
-                    Angle = 0,  // Можно задать дефолтные значения
-                    Light = 0,
-                    Skin = null
+                    Blender_Model = modelBytes,
                 };
 
-                _context.Render.Add(newRender);
+                _context.Blender.Add(newModel);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { id = newRender.Id, message = "Модель успешно добавлена." });
+                return Ok(new { id = newModel.Id, message = "Модель успешно добавлена." });
             }
             catch (Exception ex)
             {
