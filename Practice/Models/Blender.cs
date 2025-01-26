@@ -3,6 +3,7 @@
     public class Blender
     {
         public int Id { get; set; }
-        public byte[] Blender_Model { get; set; }
+        public byte[] Blender_model { get; set; }
+        public byte[] Blender_bin { get; set; }
     }
 }
