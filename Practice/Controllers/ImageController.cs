@@ -27,17 +27,18 @@ namespace Practice.Controllers
             }*/
 
             var skin = await _context.Products.FindAsync(id);
+            if (skin == null)
+            {
+                return NotFound(new { error = "Не найдено"});
+            }
 
             var renderedItem = new Render() {Angle = angle, Light = lightEnergy, Skin = skin.Image };
-
-
 
 
             var blend_file = await _context.Blender
                                            .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
 
             var blend_bytes = blend_file.Blender_file;
-
 
 
 
@@ -48,18 +49,16 @@ namespace Practice.Controllers
 
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
-/*            string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
-            string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";
-
-            string outputDir = @"C:\blender_render\";
-            string outputPath = Path.Combine(outputDir, "rendered_image.png");
+/*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
 
             try
             {
-                if (!Directory.Exists(outputDir))
+                /*if (!Directory.Exists(outputDir))
                 {
                     Directory.CreateDirectory(outputDir);
-                }
+                }*/
+
+                string outputPath = Path.Combine(Path.GetTempPath(), "rendered_image.png");
 
                 // Сохранение текстуры
                 string tempSkinPath = Path.Combine(Path.GetTempPath(), "skin.png");
@@ -69,7 +68,7 @@ namespace Practice.Controllers
                 }
 
                 string tempBlenderFilePath = Path.Combine(Path.GetTempPath(), "banka.blend");
-                using (var stream = new FileStream(tempSkinPath, FileMode.Create))
+                using (var stream = new FileStream(tempBlenderFilePath, FileMode.Create))
                 {
                     stream.Write(blend_bytes);
                 }
@@ -114,19 +113,18 @@ namespace Practice.Controllers
 
 
         [HttpGet("models")]
-        public async Task<IActionResult> GetModels(ModelType modeltype)
+        public async Task<IActionResult> GetModels()
         {
             // Поиск записи по полю ModelType
-            var blend_file = await _context.Blender
-                                           .FirstOrDefaultAsync(p => p.ModelType == modeltype.ToString());
+            var list = await _context.Blender.ToListAsync();
 
             // Проверяем, найден ли объект
-            if (blend_file == null)
+            if (list == null)
             {
                 return NotFound(new { message = "Модель не найдена" });
             }
 
-            return Ok(blend_file.Blender_file);
+            return Ok(list);
         }
 
         [HttpPost("model")]
