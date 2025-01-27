@@ -1,86 +1,92 @@
 ﻿import bpy
 import math
 import sys
+import os
 
-angle = float(sys.argv[-3])  # Угол для снимков
-lightEnergy = float(sys.argv[-2])  # Сила освещения
-texture_path = sys.argv[-1]  # Путь к текстуре
+# Debug: Print all received arguments
+print("Received arguments:", sys.argv)
 
-# Очистка сцены
-bpy.ops.object.select_all(action='SELECT')
-bpy.ops.object.delete()
+# Parse arguments
+try:
+    angle = float(sys.argv[-4])         # 4th argument from the end
+    lightEnergy = float(sys.argv[-3])  # 3rd argument from the end
+    texture_path = sys.argv[-2]        # 2nd argument from the end
+    output_path = sys.argv[-1]         # Last argument
+except ValueError as e:
+    print(f"Error parsing arguments: {e}")
+    sys.exit(1)
 
-# Импорт модели
-bpy.ops.import_scene.gltf(filepath="C:/blender_fruto/front_fruto_nyanya_half.gltf")
+# Debug: Print parsed arguments
+print(f"Angle: {angle}, Light Energy: {lightEnergy}")
+print(f"Texture Path: {texture_path}, Output Path: {output_path}")
 
-# Найти импортированную модель
-model = [obj for obj in bpy.context.scene.objects if obj.type == 'MESH'][0]
+# Verify paths
+if not os.path.exists(texture_path):
+    raise FileNotFoundError(f"Texture file not found: {texture_path}")
+if not os.path.exists(os.path.dirname(output_path)):
+    raise FileNotFoundError(f"Output directory does not exist: {os.path.dirname(output_path)}")
 
-# Создать новый материал
-material = bpy.data.materials.new(name="FrontImageMaterial")
+# Load .blend file
+#bpy.ops.wm.open_mainfile(filepath="C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend")
+
+# Find the first mesh in the scene
+model = next((obj for obj in bpy.context.scene.objects if obj.type == 'MESH'), None)
+if not model:
+    raise RuntimeError("No mesh object found in the scene.")
+
+# Debug: Print model name
+print(f"Using model: {model.name}")
+
+# Rotate the model
+model.rotation_euler = (0, 0, math.radians(angle))  # Rotate around Z-axis
+
+# Apply the texture
+material = bpy.data.materials.new(name="CustomMaterial")
 material.use_nodes = True
 
-# Узлы материала
 nodes = material.node_tree.nodes
 links = material.node_tree.links
 
-# Удалить стандартные узлы
+# Remove default nodes
 for node in nodes:
     nodes.remove(node)
 
-# Добавить узел текстуры изображения
+# Create texture nodes
 image_texture = nodes.new(type='ShaderNodeTexImage')
 image_texture.image = bpy.data.images.load(texture_path)
 
-# Добавить узел шейдера Principled BSDF
 principled_bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
-
-# Добавить узел вывода материала
 material_output = nodes.new(type='ShaderNodeOutputMaterial')
 
-# Связать узлы
+# Link nodes
 links.new(image_texture.outputs['Color'], principled_bsdf.inputs['Base Color'])
 links.new(principled_bsdf.outputs['BSDF'], material_output.inputs['Surface'])
 
-# Применить материал к модели
+# Assign material to the model
 if model.data.materials:
     model.data.materials[0] = material
 else:
     model.data.materials.append(material)
 
-# Создать камеру
-bpy.ops.object.camera_add(location=(0, 0, 0))
+# Set up camera
+camera_location = (11, 0, 1)
+bpy.ops.object.camera_add(location=camera_location)
 camera = bpy.context.object
 bpy.context.scene.camera = camera
 
-# Создать точечный источник света
-bpy.ops.object.light_add(type='POINT', location=(0, 0, 0))
+# Point camera at the model
+direction = model.location - camera.location
+camera.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+# Add light
+bpy.ops.object.light_add(type='POINT', location=(11, 0, 1))
 light = bpy.context.object
-light.data.energy = lightEnergy  # Настройка мощности света
+light.data.energy = lightEnergy*10  # Set light energy
 
-# Радиус орбиты камеры
-radius = 7
-height = 1  # Высота камеры над землёй
+# Configure render output
+bpy.context.scene.render.filepath = output_path
+bpy.context.scene.render.image_settings.file_format = 'PNG'
 
-# Функция для установки позиции камеры
-def set_camera_position(angle, is_left):
-    direction = -1 if is_left else 1  # Для левого и правого угла
-    x = radius * math.cos(math.radians(angle))
-    y = radius * math.sin(math.radians(angle)) * direction
-    camera.location = (x, y, height)
-    camera.rotation_euler = (
-        math.radians(90),  # Камера смотрит горизонтально
-        0,
-        math.radians(90 - angle) if is_left else math.radians(90 + angle)
-    )
-
-# Установить положение источника света
-light.location = (0, -5, 1)
-
-# Рендеринг фотографий
-output_path = "C:/blender_render/"
-
-# Создаём кадр
-set_camera_position(angle, is_left=True)
-bpy.context.scene.render.filepath = f"{output_path}photo.png"
+# Render the scene
 bpy.ops.render.render(write_still=True)
+print(f"Rendered image saved to {output_path}")

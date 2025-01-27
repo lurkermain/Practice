@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Practice.Configuration;
+using Practice.Enums;
 using Practice.Helpers;
 using Practice.Models;
 
@@ -65,7 +67,7 @@ namespace Practice.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] string modeltype, IFormFile image)
+        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
             if (image == null || image.Length == 0)
             {
@@ -80,7 +82,7 @@ namespace Practice.Controllers
             {
                 Name = name,
                 Description = description,
-                ModelType = modeltype,
+                ModelType = modeltype.ToString(), // Преобразуем в строку для хранения
                 Image = imageBytes
             };
 
@@ -92,7 +94,7 @@ namespace Practice.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromForm] string name, [FromForm] string description, [FromForm] string modeltype, IFormFile image)
+        public async Task<IActionResult> Update(int id, [FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
 
             var existingProduct = await _context.Products.FindAsync(id);
@@ -109,7 +111,7 @@ namespace Practice.Controllers
 
             existingProduct.Name = name;
             existingProduct.Description = description;
-            existingProduct.ModelType = modeltype;
+            existingProduct.ModelType = modeltype.ToString();
 
             _context.Entry(existingProduct).State = EntityState.Modified;
             await _context.SaveChangesAsync();
