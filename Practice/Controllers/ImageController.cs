@@ -1,156 +1,189 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using IronPython.Runtime.Operations;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Practice.Configuration;
 using Practice.Models;
 using System;
 using System.Diagnostics;
+using System.Text;
+using Practice.Helpers;
+using Practice.Enums;
 
 namespace Practice.Controllers
 {
     [ApiController]
-    [Route("[Controller]")]
-    public class ImageController : ControllerBase
+    [Route("api/products")]
+    public class ImageController(ApplicationDbContext context) : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context = context;
 
-        public ImageController(ApplicationDbContext context)
+        [HttpPut("{id}/render")]
+        public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy)
         {
-            _context = context;
-        }
-
-        /*[HttpGet("products/{id}/rendered-image")]
-        public IActionResult GetRenderedImage(int id)
-        {
-            //  изображения сохраняются в папке "C:\render"
-            string imagePath = Path.Combine(@"C:\blender_render", $"left_{id}.png");
-
-            if (!System.IO.File.Exists(imagePath))
+            /*var renderItem = await _context.Render.FindAsync(id);
+            if (renderItem == null)
             {
-                return NotFound($"Rendered image for product {id} not found.");
+                return NotFound(new { error = "Модель не найдена в базе данных." });
+            }*/
+
+            var skin = await _context.Products.FindAsync(id);
+            if (skin == null)
+            {
+                return NotFound(new { error = "Не найдено"});
             }
 
-            byte[] imageBytes = System.IO.File.ReadAllBytes(imagePath);
-            return File(imageBytes, "image/png");
-        }*/
+            var renderedItem = new Render() {Angle = angle, Light = lightEnergy, Skin = skin.Image };
 
-        /*[HttpPost("products/{id}/render")]
-        public async Task<IActionResult> RenderProductImage(int id, [FromQuery] float angle, [FromQuery] float light)
-        {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null)
+
+            var blend_file = await _context.Blender
+                                           .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
+
+            var blend_bytes = blend_file.Blender_file;
+
+
+
+            if (skin.Image == null || skin.Image.Length == 0)
             {
-                return NotFound();
-            }
-
-            string blenderExe = "\"X:\\BlenderFoundation\\Blender4.3\\blender.exe\"";
-            string scriptPath = "\"X:\\BlenderFoundation\\Blender4.3\\script2.py\"";
-            string filepath = $@"C:\blender_render\rendered_image_{id}.png";
-            string modelpath = @"C:\blender_fruto\front_fruto_nyanya_half.gltf";
-            string texturepath = @"C:\blender_fruto\front 1 bunny.png";
-
-            string arguments = $"--background --python \"{scriptPath}\" -- --filepath \"{filepath}\" --modelpath \"{modelpath}\" --texturepath \"{texturepath}\" --angle {angle} --light {light}";
-
-
-            var processStartInfo = new ProcessStartInfo
-            {
-                FileName = blenderExe,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-
-            processStartInfo.Verb = "runas";
-
-
-            // log
-            Console.WriteLine($"Blender Path: {blenderExe}");
-            Console.WriteLine($"Arguments: {arguments}");
-
-
-            using var process = new Process { StartInfo = processStartInfo };
-            process.Start();
-
-            string output = await process.StandardOutput.ReadToEndAsync();
-            string error = await process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
-
-            if (process.ExitCode != 0)
-            {
-                return StatusCode(500, $"Error rendering image: {error}");
-            }
-
-            return Ok($"Image for product {id} rendered successfully.");
-        }*/
-
-        [HttpPost("products/render")]
-        public IActionResult Render(int angle, int lightEnergy, IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest(new { error = "Файл не был загружен." });
-            }
-
-            string uploadPath = Path.Combine("C:/blender_render/", file.FileName);
-            string outputPath = "C:\\blender_render\\photo.png"; // Путь к выходному файлу
-            try
-            {
-                // Сохраняем файл на сервере
-                using (var stream = new FileStream(uploadPath, FileMode.Create))
-                {
-                    file.CopyTo(stream);
-                }
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = $"Ошибка при сохранении файла: {ex.Message}" });
+                return BadRequest(new { error = "Текстура не была загружена." });
             }
 
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
-
-            ProcessStartInfo start = new ProcessStartInfo
-            {
-                FileName = blenderPath,
-                Arguments = $"-b -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{uploadPath}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            };
-
-            string result = string.Empty;
-            string error = string.Empty;
+/*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
 
             try
             {
-                using (Process process = Process.Start(start))
+                /*if (!Directory.Exists(outputDir))
                 {
-                    using (StreamReader reader = process.StandardOutput)
-                    {
-                        result = reader.ReadToEnd();
-                    }
+                    Directory.CreateDirectory(outputDir);
+                }*/
 
-                    using (StreamReader reader = process.StandardError)
-                    {
-                        error = reader.ReadToEnd();
-                    }
+                string outputPath = Path.Combine(Path.GetTempPath(), "rendered_image.png");
+
+                // Сохранение текстуры
+                string tempSkinPath = Path.Combine(Path.GetTempPath(), "skin.png");
+                using (var stream = new FileStream(tempSkinPath, FileMode.Create))
+                {
+                    stream.Write(skin.Image);
                 }
 
-                if (!string.IsNullOrEmpty(error))
+                string tempBlenderFilePath = Path.Combine(Path.GetTempPath(), "banka.blend");
+                using (var stream = new FileStream(tempBlenderFilePath, FileMode.Create))
                 {
-                    return StatusCode(500, new { error });
+                    stream.Write(blend_bytes);
                 }
 
-                var fileBytes = System.IO.File.ReadAllBytes(outputPath);
-                return File(fileBytes, "image/png");
+                // Запуск Blender с .blend файлом
+                var start = new ProcessStartInfo
+                {
+                    FileName = blenderPath,
+                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                var process = new Process { StartInfo = start };
+                process.Start();
+
+                string outputLog = await process.StandardOutput.ReadToEndAsync();
+                string errorLog = await process.StandardError.ReadToEndAsync();
+
+                await process.WaitForExitAsync();
+
+                if (process.ExitCode != 0 || !System.IO.File.Exists(outputPath))
+                {
+                    return StatusCode(500, new { error = $"Blender завершился с ошибкой. Логи:\n{outputLog}\n{errorLog}" });
+                }
+
+                var renderedBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
+
+                // Удаление временных файлов
+                System.IO.File.Delete(tempSkinPath);
+                System.IO.File.Delete(outputPath);
+
+                return File(renderedBytes, "image/png");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = $"Ошибка при выполнении рендеринга: {ex.Message}" });
+                return StatusCode(500, new { error = $"Ошибка: {ex.Message}" });
             }
         }
 
+
+        [HttpGet("models")]
+        public async Task<IActionResult> GetModels()
+        {
+            // Поиск записи по полю ModelType
+            var list = await _context.Blender.ToListAsync();
+
+            // Проверяем, найден ли объект
+            if (list == null)
+            {
+                return NotFound(new { message = "Модель не найдена" });
+            }
+
+            return Ok(list);
+        }
+
+        [HttpPost("model")]
+        public async Task<IActionResult> AddModel([FromForm] ModelType modeltype, IFormFile Blender_file)
+        {
+            if (Blender_file == null || Blender_file.Length == 0)
+            {
+                return BadRequest(new { error = "Необходимо загрузить .blend" });
+            }
+
+            try
+            {
+                // Сохранение .gltf файла во временный массив
+                using var blender_filebytes = new MemoryStream();
+                await Blender_file.CopyToAsync(blender_filebytes);
+                byte[] fileBytes = blender_filebytes.ToArray();
+
+                // Создание новой записи модели
+                var newModel = new Blender
+                {
+                    ModelType = modeltype.ToString(),
+                    Blender_file = fileBytes,
+                };
+
+                _context.Blender.Add(newModel);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { id = newModel.Id, message = "Модель успешно добавлена." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка при добавлении модели: {ex.Message}" });
+            }
+        }
+
+
+
+        // Метод для удаления модели из базы данных
+        [HttpDelete("{id}/model")]
+        public async Task<IActionResult> DeleteModel(int id)
+        {
+            var renderItem = await _context.Blender.FindAsync(id);
+            if (renderItem == null)
+            {
+                return NotFound(new { error = "Модель с указанным идентификатором не найдена." });
+            }
+
+            try
+            {
+                _context.Blender.Remove(renderItem);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Модель успешно удалена." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = $"Ошибка при удалении модели: {ex.Message}" });
+            }
+        }
 
     }
 }

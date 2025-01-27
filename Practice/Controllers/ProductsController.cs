@@ -1,18 +1,20 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Practice.Configuration;
+using Practice.Enums;
 using Practice.Helpers;
 using Practice.Models;
 
 namespace Practice.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/products")]
     public class ProductsController(ApplicationDbContext context) : ControllerBase
     {
         private readonly ApplicationDbContext _context = context;
 
-        [HttpGet("products")]
+        [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var products = await _context.Products
@@ -29,7 +31,7 @@ namespace Practice.Controllers
             return Ok(products);
         }
 
-        [HttpGet("products/{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -51,7 +53,7 @@ namespace Practice.Controllers
             return Ok(productDto); // Возвращаем JSON-объект
         }
 
-        [HttpGet("products/{id}/image")]
+        [HttpGet("{id}/image")]
         public async Task<IActionResult> GetImage(int id)
         {
             var product = await _context.Products.FindAsync(id);
@@ -64,8 +66,8 @@ namespace Practice.Controllers
         }
 
 
-        [HttpPost("products")]
-        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] string modeltype, IFormFile image)
+        [HttpPost]
+        public async Task<IActionResult> Create([FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
             if (image == null || image.Length == 0)
             {
@@ -80,7 +82,7 @@ namespace Practice.Controllers
             {
                 Name = name,
                 Description = description,
-                ModelType = modeltype,
+                ModelType = modeltype.ToString(), // Преобразуем в строку для хранения
                 Image = imageBytes
             };
 
@@ -91,41 +93,35 @@ namespace Practice.Controllers
             return Ok();
         }
 
-        [HttpPut("products")]
-        public async Task<IActionResult> Update([FromForm] ProductCreate productDto)
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
-            if (productDto.Id != productDto.Id) return BadRequest("Product ID mismatch");
 
-            var existingProduct = await _context.Products.FindAsync(productDto.Id);
+            var existingProduct = await _context.Products.FindAsync(id);
             if (existingProduct == null)
             {
                 return NotFound();
             }
 
-            // Если изображение передано, обновляем его
-            if (productDto.Image != null && productDto.Image.Length > 0)
+            if (image != null && image.Length > 0)
             {
-                // Читаем изображение в байтовый массив
-                var imageBytes = await FileHelper.ConvertToByteArrayAsync(productDto.Image);
-                existingProduct.Image = imageBytes; // Обновляем изображение
+                var imageBytes = await FileHelper.ConvertToByteArrayAsync(image);
+                existingProduct.Image = imageBytes;
             }
 
-            // Обновляем остальные поля
-            existingProduct.Name = productDto.Name;
-            existingProduct.Description = productDto.Description;
-            existingProduct.ModelType = productDto.ModelType;
+            existingProduct.Name = name;
+            existingProduct.Description = description;
+            existingProduct.ModelType = modeltype.ToString();
 
-            // Помечаем сущность как измененную
             _context.Entry(existingProduct).State = EntityState.Modified;
-
-            // Сохраняем изменения в базе данных
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
 
-        [HttpDelete("products/{id}")]
+
+        [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _context.Products.FindAsync(id);

@@ -1,10 +1,10 @@
-using Practice;
 using Practice.Models;
 using Practice.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Swagger;
 using Microsoft.OpenApi.Models;
 using Practice.Helpers;
+using Practice.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +22,9 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "API for product management"
     });
+/*    c.UseInlineDefinitionsForEnums();
+    c.SchemaGeneratorOptions.UseInlineDefinitionsForEnums = true;
+    c.SchemaGeneratorOptions.UseAllOfForInheritance = true;*/
 });
 
 builder.Services.AddCors(options =>
