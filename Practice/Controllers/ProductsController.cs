@@ -94,7 +94,7 @@ namespace Practice.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromForm] string name, [FromForm] string description, [FromForm] string modeltype, IFormFile image)
+        public async Task<IActionResult> Update(int id, [FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
 
             var existingProduct = await _context.Products.FindAsync(id);
@@ -111,7 +111,7 @@ namespace Practice.Controllers
 
             existingProduct.Name = name;
             existingProduct.Description = description;
-            existingProduct.ModelType = modeltype;
+            existingProduct.ModelType = modeltype.ToString();
 
             _context.Entry(existingProduct).State = EntityState.Modified;
             await _context.SaveChangesAsync();

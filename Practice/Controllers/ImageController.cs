@@ -6,6 +6,8 @@ using Practice.Models;
 using System;
 using System.Diagnostics;
 using System.Text;
+using Practice.Helpers;
+using Practice.Enums;
 
 namespace Practice.Controllers
 {
@@ -15,22 +17,40 @@ namespace Practice.Controllers
     {
         private readonly ApplicationDbContext _context = context;
 
-        [HttpPost("{id}/render")]
-        public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy, IFormFile skinFile)
+        [HttpPut("{id}/render")]
+        public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy)
         {
-            var renderItem = await _context.Blender.FindAsync(id);
+            /*var renderItem = await _context.Render.FindAsync(id);
             if (renderItem == null)
             {
                 return NotFound(new { error = "Модель не найдена в базе данных." });
-            }
+            }*/
 
-            if (skinFile == null || skinFile.Length == 0)
+            var skin = await _context.Products.FindAsync(id);
+
+            var renderedItem = new Render() {Angle = angle, Light = lightEnergy, Skin = skin.Image };
+
+
+
+
+            var blend_file = await _context.Blender
+                                           .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
+
+            var blend_bytes = blend_file.Blender_file;
+
+
+
+
+            if (skin.Image == null || skin.Image.Length == 0)
             {
                 return BadRequest(new { error = "Текстура не была загружена." });
             }
 
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
+/*            string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
+            string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";
+
             string outputDir = @"C:\blender_render\";
             string outputPath = Path.Combine(outputDir, "rendered_image.png");
 
@@ -41,31 +61,24 @@ namespace Practice.Controllers
                     Directory.CreateDirectory(outputDir);
                 }
 
-                // Сохранение модели во временные файлы
-                string tempGltfPath = Path.Combine(Path.GetTempPath(), "model.gltf");
-                string tempBinPath = Path.Combine(Path.GetTempPath(), "model.bin");
-
-                await System.IO.File.WriteAllBytesAsync(tempGltfPath, renderItem.Blender_model);
-                await System.IO.File.WriteAllBytesAsync(tempBinPath, renderItem.Blender_bin);
-
-                //logs
-                if (!System.IO.File.Exists(tempGltfPath) || !System.IO.File.Exists(tempBinPath))
-                {
-                    return StatusCode(500, new { error = "GLTF или BIN файл не были созданы." });
-                }
-
                 // Сохранение текстуры
                 string tempSkinPath = Path.Combine(Path.GetTempPath(), "skin.png");
                 using (var stream = new FileStream(tempSkinPath, FileMode.Create))
                 {
-                    await skinFile.CopyToAsync(stream);
+                    stream.Write(skin.Image);
                 }
 
-                // Запуск Blender
+                string tempBlenderFilePath = Path.Combine(Path.GetTempPath(), "banka.blend");
+                using (var stream = new FileStream(tempSkinPath, FileMode.Create))
+                {
+                    stream.Write(blend_bytes);
+                }
+
+                // Запуск Blender с .blend файлом
                 var start = new ProcessStartInfo
                 {
                     FileName = blenderPath,
-                    Arguments = $"-b -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{tempGltfPath}\" \"{tempSkinPath}\" \"{outputPath}\"",
+                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -88,8 +101,6 @@ namespace Practice.Controllers
                 var renderedBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
 
                 // Удаление временных файлов
-                System.IO.File.Delete(tempGltfPath);
-                System.IO.File.Delete(tempBinPath);
                 System.IO.File.Delete(tempSkinPath);
                 System.IO.File.Delete(outputPath);
 
@@ -103,38 +114,41 @@ namespace Practice.Controllers
 
 
         [HttpGet("models")]
-        public async Task<IActionResult> GetModels()
+        public async Task<IActionResult> GetModels(ModelType modeltype)
         {
-            var models = await _context.Blender.Select(p => new Blender {Id = p.Id, Blender_model = p.Blender_model}).ToListAsync();
+            // Поиск записи по полю ModelType
+            var blend_file = await _context.Blender
+                                           .FirstOrDefaultAsync(p => p.ModelType == modeltype.ToString());
 
-            return Ok(models);
+            // Проверяем, найден ли объект
+            if (blend_file == null)
+            {
+                return NotFound(new { message = "Модель не найдена" });
+            }
+
+            return Ok(blend_file.Blender_file);
         }
 
         [HttpPost("model")]
-        public async Task<IActionResult> AddModel(IFormFile gltfFile, IFormFile binFile)
+        public async Task<IActionResult> AddModel([FromForm] ModelType modeltype, IFormFile Blender_file)
         {
-            if (gltfFile == null || gltfFile.Length == 0 || binFile == null || binFile.Length == 0)
+            if (Blender_file == null || Blender_file.Length == 0)
             {
-                return BadRequest(new { error = "Необходимо загрузить оба файла: .gltf и .bin." });
+                return BadRequest(new { error = "Необходимо загрузить .blend" });
             }
 
             try
             {
                 // Сохранение .gltf файла во временный массив
-                using var gltfStream = new MemoryStream();
-                await gltfFile.CopyToAsync(gltfStream);
-                byte[] gltfBytes = gltfStream.ToArray();
-
-                // Сохранение .bin файла во временный массив
-                using var binStream = new MemoryStream();
-                await binFile.CopyToAsync(binStream);
-                byte[] binBytes = binStream.ToArray();
+                using var blender_filebytes = new MemoryStream();
+                await Blender_file.CopyToAsync(blender_filebytes);
+                byte[] fileBytes = blender_filebytes.ToArray();
 
                 // Создание новой записи модели
                 var newModel = new Blender
                 {
-                    Blender_model = gltfBytes,
-                    Blender_bin = binBytes,
+                    ModelType = modeltype.ToString(),
+                    Blender_file = fileBytes,
                 };
 
                 _context.Blender.Add(newModel);

@@ -5,7 +5,8 @@ namespace Practice.Enums
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ModelType
     {
-        Банка,
+        Банка_80г,
+        Банка_110г,
         Пакет
     }
 }
