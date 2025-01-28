@@ -101,7 +101,7 @@ namespace Practice.Controllers
 
                 renderedItem.RenderedImage = renderedBytes;
 
-                /*await _context.Render.AddAsync(renderedItem);*/
+                await _context.Render.AddAsync(renderedItem);
                 await _context.SaveChangesAsync();
 
                 // Удаление временных файлов
@@ -181,6 +181,18 @@ namespace Practice.Controllers
             }
         }
 
+
+        [HttpGet("{id}/rendered-image")]
+        public async Task<IActionResult> GetImage(int id)
+        {
+            var product = await _context.Render.FindAsync(id);
+            if (product == null || product.RenderedImage == null)
+            {
+                return NotFound();
+            }
+
+            return File(product.RenderedImage, "image/jpg");
+        }
 
 
         // Метод для удаления модели из базы данных
