@@ -7,6 +7,5 @@
         public int Light { get; set; } // Яркость света
         public byte[] Skin { get; set; } // Текстура
         public byte[] RenderedImage { get; set; } // Сгенерированное изображение
-        public byte[] BlendFile { get; set; } // .blend файл
     }
 }

@@ -99,9 +99,15 @@ namespace Practice.Controllers
 
                 var renderedBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
 
+                renderedItem.RenderedImage = renderedBytes;
+
+                /*await _context.Render.AddAsync(renderedItem);*/
+                await _context.SaveChangesAsync();
+
                 // Удаление временных файлов
                 System.IO.File.Delete(tempSkinPath);
                 System.IO.File.Delete(outputPath);
+                System.IO.File.Delete(tempBlenderFilePath);
 
                 return File(renderedBytes, "image/png");
             }
@@ -117,6 +123,21 @@ namespace Practice.Controllers
         {
             // Поиск записи по полю ModelType
             var list = await _context.Blender.ToListAsync();
+
+            // Проверяем, найден ли объект
+            if (list == null)
+            {
+                return NotFound(new { message = "Модель не найдена" });
+            }
+
+            return Ok(list);
+        }
+
+        [HttpGet("renders")]
+        public async Task<IActionResult> GetRenders()
+        {
+            // Поиск записи по полю ModelType
+            var list = await _context.Render.ToListAsync();
 
             // Проверяем, найден ли объект
             if (list == null)
