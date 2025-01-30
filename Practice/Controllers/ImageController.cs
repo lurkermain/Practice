@@ -1,5 +1,4 @@
-﻿using IronPython.Runtime.Operations;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Practice.Configuration;
 using Practice.Models;
@@ -8,6 +7,10 @@ using System.Diagnostics;
 using System.Text;
 using Practice.Helpers;
 using Practice.Enums;
+using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
+using System.Reflection.Metadata;
 
 namespace Practice.Controllers
 {
@@ -18,46 +21,59 @@ namespace Practice.Controllers
         private readonly ApplicationDbContext _context = context;
 
         [HttpPut("{id}/render")]
-        public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy)
+        public async Task<IActionResult> RenderModel(
+            int id,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(144), Range(0, 360)] int angle_horizontal,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(0, 360)] int angle_vertical,
+            [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
         {
-            /*var renderItem = await _context.Render.FindAsync(id);
-            if (renderItem == null)
-            {
-                return NotFound(new { error = "Модель не найдена в базе данных." });
-            }*/
+
+            var stopwatch = Stopwatch.StartNew();
 
             var skin = await _context.Products.FindAsync(id);
             if (skin == null)
             {
-                return NotFound(new { error = "Не найдено"});
+                return NotFound(new { error = "Не найдено" });
             }
 
-            var renderedItem = new Render() {Angle = angle, Light = lightEnergy, Skin = skin.Image };
-
-
-            var blend_file = await _context.Blender
-                                           .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
-
-            var blend_bytes = blend_file.Blender_file;
-
-
+            var renderedItem = new Render()
+            {
+                Angle_vertical = angle_vertical,
+                Angle_horizontal = angle_horizontal,
+                Light = lightEnergy,
+                Skin = skin.Image
+            };
 
             if (skin.Image == null || skin.Image.Length == 0)
             {
                 return BadRequest(new { error = "Текстура не была загружена." });
             }
 
+            // Проверка на существующую отрендеренную фотку
+            /*var existingRender = await _context.Render
+        .FirstOrDefaultAsync(r => r.Angle_vertical == angle_vertical &&
+        r.Angle_horizontal == angle_horizontal &&
+        r.Light == lightEnergy &&
+        r.Skin == skin.Image);
+
+            // Возвращение существующего рендера
+            if (existingRender != null)
+            {
+                return File(existingRender.RenderedImage, "image/png");
+            }*/
+
+            var blend_file = await _context.Blender
+                                           .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
+
+            var blend_bytes = blend_file.Blender_file;
+
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
-/*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
+            /*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
 
             try
             {
-                /*if (!Directory.Exists(outputDir))
-                {
-                    Directory.CreateDirectory(outputDir);
-                }*/
-
+                // Выходная фотка
                 string outputPath = Path.Combine(Path.GetTempPath(), "rendered_image.png");
 
                 // Сохранение текстуры
@@ -67,6 +83,7 @@ namespace Practice.Controllers
                     stream.Write(skin.Image);
                 }
 
+                // Сохранение бленд файла
                 string tempBlenderFilePath = Path.Combine(Path.GetTempPath(), "banka.blend");
                 using (var stream = new FileStream(tempBlenderFilePath, FileMode.Create))
                 {
@@ -77,7 +94,7 @@ namespace Practice.Controllers
                 var start = new ProcessStartInfo
                 {
                     FileName = blenderPath,
-                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
+                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle_vertical} {angle_horizontal} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -92,18 +109,28 @@ namespace Practice.Controllers
 
                 await process.WaitForExitAsync();
 
+                //logs
                 if (process.ExitCode != 0 || !System.IO.File.Exists(outputPath))
                 {
                     return StatusCode(500, new { error = $"Blender завершился с ошибкой. Логи:\n{outputLog}\n{errorLog}" });
                 }
 
                 var renderedBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
+                renderedItem.RenderedImage = renderedBytes;
+
+                await _context.Render.AddAsync(renderedItem);
+                await _context.SaveChangesAsync();
 
                 // Удаление временных файлов
                 System.IO.File.Delete(tempSkinPath);
                 System.IO.File.Delete(outputPath);
+                System.IO.File.Delete(tempBlenderFilePath);
 
-                return File(renderedBytes, "image/png");
+                // Остановка секундомера
+                stopwatch.Stop();
+                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+
+                return File(renderedBytes, "image/png", $"render_time: {elapsedSeconds} сек.");
             }
             catch (Exception ex)
             {
@@ -117,6 +144,21 @@ namespace Practice.Controllers
         {
             // Поиск записи по полю ModelType
             var list = await _context.Blender.ToListAsync();
+
+            // Проверяем, найден ли объект
+            if (list == null)
+            {
+                return NotFound(new { message = "Модель не найдена" });
+            }
+
+            return Ok(list);
+        }
+
+        [HttpGet("renders")]
+        public async Task<IActionResult> GetRenders()
+        {
+            // Поиск записи по полю ModelType
+            var list = await _context.Render.ToListAsync();
 
             // Проверяем, найден ли объект
             if (list == null)
@@ -160,6 +202,18 @@ namespace Practice.Controllers
             }
         }
 
+
+        [HttpGet("{id}/rendered-image")]
+        public async Task<IActionResult> GetImage(int id)
+        {
+            var product = await _context.Render.FindAsync(id);
+            if (product == null || product.RenderedImage == null)
+            {
+                return NotFound();
+            }
+
+            return File(product.RenderedImage, "image/jpg");
+        }
 
 
         // Метод для удаления модели из базы данных
