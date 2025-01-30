@@ -93,7 +93,7 @@ namespace Practice.Controllers
             return Ok();
         }
 
-        [HttpPut("{id}")]
+        [HttpPatch("{id}")]
         public async Task<IActionResult> Update(int id, [FromForm] string name, [FromForm] string description, [FromForm] ModelType modeltype, IFormFile image)
         {
 

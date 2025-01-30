@@ -8,7 +8,8 @@ print("Received arguments:", sys.argv)
 
 # Parse arguments
 try:
-    angle = float(sys.argv[-4])         # 4th argument from the end
+    angle_vertical = float(sys.argv[-5]) # 5th
+    angle_horizontal = float(sys.argv[-4])         # 4th argument from the end
     lightEnergy = float(sys.argv[-3])  # 3rd argument from the end
     texture_path = sys.argv[-2]        # 2nd argument from the end
     output_path = sys.argv[-1]         # Last argument
@@ -17,8 +18,8 @@ except ValueError as e:
     sys.exit(1)
 
 # Debug: Print parsed arguments
-print(f"Angle: {angle}, Light Energy: {lightEnergy}")
-print(f"Texture Path: {texture_path}, Output Path: {output_path}")
+#print(f"Angle: {angle}, Light Energy: {lightEnergy}")
+#print(f"Texture Path: {texture_path}, Output Path: {output_path}")
 
 # Verify paths
 if not os.path.exists(texture_path):
@@ -37,8 +38,20 @@ if not model:
 # Debug: Print model name
 print(f"Using model: {model.name}")
 
+
+# Настройка рендера для скорости
+bpy.context.scene.cycles.samples = 64  # Количество сэмплов (можно уменьшить для скорости)
+bpy.context.scene.cycles.use_adaptive_sampling = False  # Адаптивные сэмплы
+bpy.context.scene.cycles.use_denoising = False  # Включаем шумоподавление
+bpy.context.scene.cycles.use_fast_gi = False  # Ускоренное глобальное освещение
+bpy.context.scene.render.resolution_x = 1024
+bpy.context.scene.render.resolution_y = 1024
+bpy.context.scene.render.resolution_percentage = 100
+
+
+
 # Rotate the model
-model.rotation_euler = (0, 0, math.radians(angle))  # Rotate around Z-axis
+model.rotation_euler = (0, math.radians(angle_vertical), math.radians(angle_horizontal))  # Rotate around Z-axis
 
 # Apply the texture
 material = bpy.data.materials.new(name="CustomMaterial")
@@ -68,6 +81,10 @@ if model.data.materials:
 else:
     model.data.materials.append(material)
 
+# Делаем сцену активной
+bpy.context.view_layer.objects.active = None
+bpy.ops.object.select_all(action='DESELECT')
+
 # Set up camera
 camera_location = (11, 0, 1)
 bpy.ops.object.camera_add(location=camera_location)
@@ -81,7 +98,8 @@ camera.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
 # Add light
 bpy.ops.object.light_add(type='POINT', location=(11, 0, 1))
 light = bpy.context.object
-light.data.energy = lightEnergy*10  # Set light energy
+light.data.energy = lightEnergy*25  # Set light energy
+light.data.use_shadow = False  # Отключаем тени для ускорения
 
 # Configure render output
 bpy.context.scene.render.filepath = output_path
