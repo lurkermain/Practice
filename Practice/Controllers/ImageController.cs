@@ -28,7 +28,7 @@ namespace Practice.Controllers
             [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
         {
 
-            var stopwatch = Stopwatch.StartNew();
+            /*var stopwatch = Stopwatch.StartNew();*/
 
             var skin = await _context.Products.FindAsync(id);
             if (skin == null)
@@ -126,11 +126,12 @@ namespace Practice.Controllers
                 System.IO.File.Delete(outputPath);
                 System.IO.File.Delete(tempBlenderFilePath);
 
-                // Остановка секундомера
+                /*// Остановка секундомера
                 stopwatch.Stop();
-                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;*/
+                //$"render_time: {elapsedSeconds} сек."
 
-                return File(renderedBytes, "image/png", $"render_time: {elapsedSeconds} сек.");
+                return File(renderedBytes, "image/png");
             }
             catch (Exception ex)
             {
