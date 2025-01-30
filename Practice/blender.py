@@ -8,7 +8,8 @@ print("Received arguments:", sys.argv)
 
 # Parse arguments
 try:
-    angle = float(sys.argv[-4])         # 4th argument from the end
+    angle_vertical = float(sys.argv[-5]) # 5th
+    angle_horizontal = float(sys.argv[-4])         # 4th argument from the end
     lightEnergy = float(sys.argv[-3])  # 3rd argument from the end
     texture_path = sys.argv[-2]        # 2nd argument from the end
     output_path = sys.argv[-1]         # Last argument
@@ -17,8 +18,8 @@ except ValueError as e:
     sys.exit(1)
 
 # Debug: Print parsed arguments
-print(f"Angle: {angle}, Light Energy: {lightEnergy}")
-print(f"Texture Path: {texture_path}, Output Path: {output_path}")
+#print(f"Angle: {angle}, Light Energy: {lightEnergy}")
+#print(f"Texture Path: {texture_path}, Output Path: {output_path}")
 
 # Verify paths
 if not os.path.exists(texture_path):
@@ -38,7 +39,7 @@ if not model:
 print(f"Using model: {model.name}")
 
 # Rotate the model
-model.rotation_euler = (0, 0, math.radians(angle))  # Rotate around Z-axis
+model.rotation_euler = (0, math.radians(angle_vertical), math.radians(angle_horizontal))  # Rotate around Z-axis
 
 # Apply the texture
 material = bpy.data.materials.new(name="CustomMaterial")
@@ -81,7 +82,7 @@ camera.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
 # Add light
 bpy.ops.object.light_add(type='POINT', location=(11, 0, 1))
 light = bpy.context.object
-light.data.energy = lightEnergy*10  # Set light energy
+light.data.energy = lightEnergy*25  # Set light energy
 
 # Configure render output
 bpy.context.scene.render.filepath = output_path

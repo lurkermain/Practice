@@ -10,6 +10,7 @@ using Practice.Enums;
 using Swashbuckle.AspNetCore.Annotations;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel;
+using System.Reflection.Metadata;
 
 namespace Practice.Controllers
 {
@@ -22,34 +23,51 @@ namespace Practice.Controllers
         [HttpPut("{id}/render")]
         public async Task<IActionResult> RenderModel(
             int id,
-            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах"), DefaultValue(144), Range(0, 360)]  int angle,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(144), Range(0, 360)] int angle_horizontal,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(0, 360)] int angle_vertical,
             [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
         {
 
             var skin = await _context.Products.FindAsync(id);
             if (skin == null)
             {
-                return NotFound(new { error = "Не найдено"});
+                return NotFound(new { error = "Не найдено" });
             }
 
-            var renderedItem = new Render() {Angle = angle, Light = lightEnergy, Skin = skin.Image };
-
-
-            var blend_file = await _context.Blender
-                                           .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
-
-            var blend_bytes = blend_file.Blender_file;
-
-
+            var renderedItem = new Render()
+            {
+                Angle_vertical = angle_vertical,
+                Angle_horizontal = angle_horizontal,
+                Light = lightEnergy,
+                Skin = skin.Image
+            };
 
             if (skin.Image == null || skin.Image.Length == 0)
             {
                 return BadRequest(new { error = "Текстура не была загружена." });
             }
 
+            // Проверка на существующую отрендеренную фотку
+            var existingRender = await _context.Render
+        .FirstOrDefaultAsync(r => r.Angle_vertical == angle_vertical &&
+        r.Angle_horizontal == angle_horizontal &&
+        r.Light == lightEnergy &&
+        r.Skin == skin.Image);
+
+            // Возвращение существующего рендера
+            if (existingRender != null)
+            {
+                return File(existingRender.RenderedImage, "image/png");
+            }
+
+            var blend_file = await _context.Blender
+                                           .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
+
+            var blend_bytes = blend_file.Blender_file;
+
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
-/*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
+            /*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
 
             try
             {
@@ -74,7 +92,7 @@ namespace Practice.Controllers
                 var start = new ProcessStartInfo
                 {
                     FileName = blenderPath,
-                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
+                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle_vertical} {angle_horizontal} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -89,19 +107,16 @@ namespace Practice.Controllers
 
                 await process.WaitForExitAsync();
 
+                //logs
                 if (process.ExitCode != 0 || !System.IO.File.Exists(outputPath))
                 {
                     return StatusCode(500, new { error = $"Blender завершился с ошибкой. Логи:\n{outputLog}\n{errorLog}" });
                 }
 
                 var renderedBytes = await System.IO.File.ReadAllBytesAsync(outputPath);
-
                 renderedItem.RenderedImage = renderedBytes;
 
-
-                //OPASNO
                 await _context.Render.AddAsync(renderedItem);
-                
                 await _context.SaveChangesAsync();
 
                 // Удаление временных файлов
