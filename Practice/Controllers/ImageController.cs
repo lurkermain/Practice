@@ -28,6 +28,8 @@ namespace Practice.Controllers
             [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
         {
 
+            var stopwatch = Stopwatch.StartNew();
+
             var skin = await _context.Products.FindAsync(id);
             if (skin == null)
             {
@@ -48,7 +50,7 @@ namespace Practice.Controllers
             }
 
             // Проверка на существующую отрендеренную фотку
-            var existingRender = await _context.Render
+            /*var existingRender = await _context.Render
         .FirstOrDefaultAsync(r => r.Angle_vertical == angle_vertical &&
         r.Angle_horizontal == angle_horizontal &&
         r.Light == lightEnergy &&
@@ -58,7 +60,7 @@ namespace Practice.Controllers
             if (existingRender != null)
             {
                 return File(existingRender.RenderedImage, "image/png");
-            }
+            }*/
 
             var blend_file = await _context.Blender
                                            .FirstOrDefaultAsync(p => p.ModelType == skin.ModelType.ToString());
@@ -124,7 +126,11 @@ namespace Practice.Controllers
                 System.IO.File.Delete(outputPath);
                 System.IO.File.Delete(tempBlenderFilePath);
 
-                return File(renderedBytes, "image/png");
+                // Остановка секундомера
+                stopwatch.Stop();
+                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+
+                return File(renderedBytes, "image/png", $"render_time: {elapsedSeconds} сек.");
             }
             catch (Exception ex)
             {
