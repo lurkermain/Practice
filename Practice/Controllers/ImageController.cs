@@ -1,5 +1,4 @@
-﻿using IronPython.Runtime.Operations;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Practice.Configuration;
 using Practice.Models;
@@ -8,6 +7,9 @@ using System.Diagnostics;
 using System.Text;
 using Practice.Helpers;
 using Practice.Enums;
+using Swashbuckle.AspNetCore.Annotations;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel;
 
 namespace Practice.Controllers
 {
@@ -18,13 +20,11 @@ namespace Practice.Controllers
         private readonly ApplicationDbContext _context = context;
 
         [HttpPut("{id}/render")]
-        public async Task<IActionResult> RenderModel(int id, int angle, int lightEnergy)
+        public async Task<IActionResult> RenderModel(
+            int id,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах"), DefaultValue(144), Range(0, 360)]  int angle,
+            [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
         {
-            /*var renderItem = await _context.Render.FindAsync(id);
-            if (renderItem == null)
-            {
-                return NotFound(new { error = "Модель не найдена в базе данных." });
-            }*/
 
             var skin = await _context.Products.FindAsync(id);
             if (skin == null)
@@ -53,11 +53,7 @@ namespace Practice.Controllers
 
             try
             {
-                /*if (!Directory.Exists(outputDir))
-                {
-                    Directory.CreateDirectory(outputDir);
-                }*/
-
+                // Выходная фотка
                 string outputPath = Path.Combine(Path.GetTempPath(), "rendered_image.png");
 
                 // Сохранение текстуры
@@ -67,6 +63,7 @@ namespace Practice.Controllers
                     stream.Write(skin.Image);
                 }
 
+                // Сохранение бленд файла
                 string tempBlenderFilePath = Path.Combine(Path.GetTempPath(), "banka.blend");
                 using (var stream = new FileStream(tempBlenderFilePath, FileMode.Create))
                 {
@@ -101,7 +98,10 @@ namespace Practice.Controllers
 
                 renderedItem.RenderedImage = renderedBytes;
 
+
+                //OPASNO
                 await _context.Render.AddAsync(renderedItem);
+                
                 await _context.SaveChangesAsync();
 
                 // Удаление временных файлов
