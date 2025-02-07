@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aspnet_app
+    depends_on:
+      - db
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=icsDB;Username=postgres;Password=123
+    ports:
+      - "8080:8080"
+    restart: always
+
+  db:
+    image: postgres:16
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: icsDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  postgres_data:
