@@ -1,0 +1,6 @@
+services:
+  practice:
+    image: ${DOCKER_REGISTRY-}practice
+    build:
+      context: .
+      dockerfile: Practice/Dockerfile

@@ -23,8 +23,8 @@ namespace Practice.Controllers
         [HttpPut("{id}/render")]
         public async Task<IActionResult> RenderModel(
             int id,
-            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(144), Range(0, 360)] int angle_horizontal,
-            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(0, 360)] int angle_vertical,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(0), Range(-45, 45)] int angle_horizontal,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(-45, 45)] int angle_vertical,
             [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
         {
 
@@ -69,7 +69,6 @@ namespace Practice.Controllers
 
             string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
             string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
-            /*          string blendFilePath = @"C:/Users/jenya/Downloads/Telegram Desktop/banka3ReadyToo.blend";*/
 
             try
             {
@@ -144,7 +143,7 @@ namespace Practice.Controllers
         public async Task<IActionResult> GetModels()
         {
             // Поиск записи по полю ModelType
-            var list = await _context.Blender.ToListAsync();
+            var list = await _context.Blender.Select(p => new Blender {Id = p.Id, ModelType = p.ModelType }).ToListAsync();
 
             // Проверяем, найден ли объект
             if (list == null)
