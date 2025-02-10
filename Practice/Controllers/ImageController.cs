@@ -23,12 +23,11 @@ namespace Practice.Controllers
         [HttpPut("{id}/render")]
         public async Task<IActionResult> RenderModel(
             int id,
-            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(0), Range(-45, 45)] int angle_horizontal,
-            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(-45, 45)] int angle_vertical,
-            [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy)
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(0), Range(-90, 90)] int angle_horizontal,
+            [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(-90, 90)] int angle_vertical,
+            [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy,
+            [FromQuery, SwaggerParameter("Угол поворота света в градусах по горизонтали"), DefaultValue(0), Range(-180, 180)] int angle_light)
         {
-
-            /*var stopwatch = Stopwatch.StartNew();*/
 
             var skin = await _context.Products.FindAsync(id);
             if (skin == null)
@@ -41,7 +40,8 @@ namespace Practice.Controllers
                 Angle_vertical = angle_vertical,
                 Angle_horizontal = angle_horizontal,
                 Light = lightEnergy,
-                Skin = skin.Image
+                Skin = skin.Image,
+                Angle_light = angle_light
             };
 
             if (skin.Image == null || skin.Image.Length == 0)
@@ -93,7 +93,7 @@ namespace Practice.Controllers
                 var start = new ProcessStartInfo
                 {
                     FileName = blenderPath,
-                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle_vertical} {angle_horizontal} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
+                    Arguments = $"-b \"{tempBlenderFilePath}\" -P \"{scriptPath}\" -- {angle_light} {angle_vertical} {angle_horizontal} {lightEnergy} \"{tempSkinPath}\" \"{outputPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -124,11 +124,6 @@ namespace Practice.Controllers
                 System.IO.File.Delete(tempSkinPath);
                 System.IO.File.Delete(outputPath);
                 System.IO.File.Delete(tempBlenderFilePath);
-
-                /*// Остановка секундомера
-                stopwatch.Stop();
-                double elapsedSeconds = stopwatch.Elapsed.TotalSeconds;*/
-                //$"render_time: {elapsedSeconds} сек."
 
                 return File(renderedBytes, "image/png");
             }
