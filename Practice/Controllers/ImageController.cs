@@ -25,7 +25,7 @@ namespace Practice.Controllers
             int id,
             [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по горизонтали"), DefaultValue(0), Range(-90, 90)] int angle_horizontal,
             [FromQuery, SwaggerParameter("Угол поворота камеры в градусах по вертикали"), DefaultValue(0), Range(-90, 90)] int angle_vertical,
-            [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(80), Range(0, 100)] int lightEnergy,
+            [FromQuery, SwaggerParameter("Интенсивность света (0-100)"), DefaultValue(50), Range(0, 100)] int lightEnergy,
             [FromQuery, SwaggerParameter("Угол поворота света в градусах по горизонтали"), DefaultValue(0), Range(-180, 180)] int angle_light)
         {
 
