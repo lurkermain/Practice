@@ -8,6 +8,7 @@ print("Received arguments:", sys.argv)
 
 # Parse arguments
 try:
+    angle_light = float(sys.argv[-6]) #6th
     angle_vertical = float(sys.argv[-5]) # 5th
     angle_horizontal = float(sys.argv[-4])         # 4th argument from the end
     lightEnergy = float(sys.argv[-3])  # 3rd argument from the end
@@ -86,7 +87,7 @@ bpy.context.view_layer.objects.active = None
 bpy.ops.object.select_all(action='DESELECT')
 
 # Set up camera
-camera_location = (11, 0, 1)
+camera_location = (8, 0, 1)
 bpy.ops.object.camera_add(location=camera_location)
 camera = bpy.context.object
 bpy.context.scene.camera = camera
@@ -95,11 +96,27 @@ bpy.context.scene.camera = camera
 direction = model.location - camera.location
 camera.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
 
-# Add light
-bpy.ops.object.light_add(type='POINT', location=(11, 0, 1))
+
+
+# Радиус окружности для света
+light_radius = 8  
+
+# Вычисляем новую позицию света на круге
+light_x = light_radius * math.cos(math.radians(angle_light))
+light_y = light_radius * math.sin(math.radians(angle_light))
+light_z = 5  # Высота света
+
+
+# Добавляем сферический источник (POINT)
+bpy.ops.object.light_add(type='POINT', location=(light_x, light_y, light_z))
 light = bpy.context.object
-light.data.energy = lightEnergy*25  # Set light energy
-light.data.use_shadow = False  # Отключаем тени для ускорения
+
+#light.rotation_euler = (0, 0, math.radians(angle_light))  # Поворот света
+
+light.data.energy = lightEnergy * 25  # Set light energy
+light.data.use_shadow = True  # Отключаем тени для ускорения
+
+
 
 # Configure render output
 bpy.context.scene.render.filepath = output_path

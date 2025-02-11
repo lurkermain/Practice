@@ -8,5 +8,6 @@
         public int Light { get; set; } // Яркость света
         public byte[] Skin { get; set; } // Текстура
         public byte[] RenderedImage { get; set; } // Сгенерированное изображение
+        public int Angle_light { get; set; }
     }
 }
