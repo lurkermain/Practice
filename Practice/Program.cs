@@ -15,7 +15,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add services
 builder.Services.AddControllers();
-builder.Services.AddSwaggerGen(c =>
+/*builder.Services.AddSwaggerGen(c =>
 {
     c.EnableAnnotations();
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -24,10 +24,10 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "API for product management"
     });
-/*    c.UseInlineDefinitionsForEnums();
+*//*    c.UseInlineDefinitionsForEnums();
     c.SchemaGeneratorOptions.UseInlineDefinitionsForEnums = true;
-    c.SchemaGeneratorOptions.UseAllOfForInheritance = true;*/
-});
+    c.SchemaGeneratorOptions.UseAllOfForInheritance = true;*//*
+});*/
 
 builder.Services.AddCors(options =>
 {
@@ -42,11 +42,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+/*if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+}*/
 
 app.UseCors();
 
@@ -57,5 +57,12 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapControllers();
+
+
+app.MapGet("/", async context =>
+{
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync("wwwroot/index.html");
+});
 
 app.Run();
