@@ -1,0 +1,20 @@
+
+# backtrace
+Exception Record:
+
+ExceptionCode         : EXCEPTION_ACCESS_VIOLATION
+Exception Address     : 0x00007FF7E84BE79E
+Exception Module      : blender.exe
+Exception Flags       : 0x00000000
+Exception Parameters  : 0x2
+	Parameters[0] : 0x0000000000000000
+	Parameters[1] : 0x00000000000003C8
+
+
+Stack trace:
+blender.exe         :0x00007FF7E84BE79E  Symbols not available
+
+
+Loaded Modules :
+
+# Python backtrace

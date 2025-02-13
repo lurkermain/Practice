@@ -33,7 +33,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://musical-cactus-08f1b2.netlify.app");
+        policy.WithOrigins("http://localhost:5173");
         policy.AllowAnyHeader();
         policy.AllowAnyMethod();
     });
