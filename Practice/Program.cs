@@ -31,16 +31,13 @@ builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.WithOrigins("http://localhost:5173");
-        policy.AllowAnyHeader();
-        policy.AllowAnyMethod();
-    });
-
+    options.AddPolicy("AllowAll",
+        policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+
 var app = builder.Build();
+app.UseCors("AllowAll");
 
 /*if (app.Environment.IsDevelopment())
 {
@@ -48,7 +45,7 @@ var app = builder.Build();
     app.UseSwaggerUI();
 }*/
 
-app.UseCors();
+
 
 app.UseHttpsRedirection();
 

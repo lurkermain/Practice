@@ -67,8 +67,8 @@ namespace Practice.Controllers
 
             var blend_bytes = blend_file.Blender_file;
 
-            string blenderPath = @"X:\BlenderFoundation\Blender4.3\blender.exe";
-            string scriptPath = @"X:\BlenderFoundation\Blender4.3\script3.py";
+            string blenderPath = @"D:\Program Files\Blender Foundation\Blender 4.3\blender.exe";
+            string scriptPath = @"D:\Program Files\Blender Foundation\Blender 4.3\script3.py";
 
             try
             {
