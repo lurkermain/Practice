@@ -15,7 +15,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Add services
 builder.Services.AddControllers();
-/*builder.Services.AddSwaggerGen(c =>
+builder.Services.AddSwaggerGen(c =>
 {
     c.EnableAnnotations();
     c.SwaggerDoc("v1", new OpenApiInfo
@@ -24,37 +24,39 @@ builder.Services.AddControllers();
         Version = "v1",
         Description = "API for product management"
     });
-*//*    c.UseInlineDefinitionsForEnums();
+    c.UseInlineDefinitionsForEnums();
     c.SchemaGeneratorOptions.UseInlineDefinitionsForEnums = true;
-    c.SchemaGeneratorOptions.UseAllOfForInheritance = true;*//*
-});*/
+    c.SchemaGeneratorOptions.UseAllOfForInheritance = true;
+});
 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://musical-cactus-08f1b2.netlify.app");
+        policy.WithOrigins("https://localhost:*");
         policy.AllowAnyHeader();
         policy.AllowAnyMethod();
+        policy.AllowCredentials();
     });
 
 });
 
 var app = builder.Build();
 
-/*if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-}*/
+}
 
 app.UseCors();
+app.UseAuthorization();
 
-app.UseHttpsRedirection();
+/*app.UseHttpsRedirection();*/
 
 app.UseStaticFiles();
 app.UseRouting();
-app.UseAuthorization();
+
 
 app.MapControllers();
 

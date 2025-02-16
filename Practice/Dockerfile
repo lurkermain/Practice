@@ -1,14 +1,11 @@
-# См. статью по ссылке https://aka.ms/customizecontainer, чтобы узнать как настроить контейнер отладки и как Visual Studio использует этот Dockerfile для создания образов для ускорения отладки.
-
-# Этот этап используется при запуске из VS в быстром режиме (по умолчанию для конфигурации отладки)
+# Базовый образ (используется при запуске из VS в быстром режиме)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-
-# Этот этап используется для сборки проекта службы
+# Этап сборки проекта
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -18,13 +15,23 @@ COPY . .
 WORKDIR "/src/Practice"
 RUN dotnet build "./Practice.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
-# Этот этап используется для публикации проекта службы, который будет скопирован на последний этап
+# Этап публикации
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Practice.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
-# Этот этап используется в рабочей среде или при запуске из VS в обычном режиме (по умолчанию, когда конфигурация отладки не используется)
+# Финальный образ (рабочая среда)
 FROM base AS final
 WORKDIR /app
+
+# Копируем опубликованное приложение
 COPY --from=publish /app/publish .
+
+# Копируем Blender в контейнер
+COPY "X:/BlenderFoundation/Blender4.3/blender.exe" "/app/blender"
+
+# Даем права на выполнение (если контейнер Linux)
+RUN chmod +x /app/blender/blender.exe || echo "Skipping chmod"
+
+# Запуск .NET-приложения
 ENTRYPOINT ["dotnet", "Practice.dll"]
